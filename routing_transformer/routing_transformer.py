@@ -12,6 +12,8 @@ from product_key_memory import PKM
 from mixture_of_experts import MoE
 from routing_transformer.reversible import ReversibleSequence, SequentialSequence
 
+import horovod.torch as hvd
+
 # constants
 
 TOKEN_SELF_ATTN_VALUE = -5e4
@@ -182,6 +184,7 @@ def distribution(dists, window_size):
     indices = topk_indices.transpose(-2, -1)
     return indices.reshape(*indices.size()[:2], -1)
 
+
 class Kmeans(nn.Module):
     def __init__(self, num_heads, head_dim, num_clusters, ema_decay = 0.999, commitment = 1e-4):
         super().__init__()
@@ -215,7 +218,8 @@ class Kmeans(nn.Module):
             means = kmeans_iter(x, means)
 
         self.num_new_means = 0
-        self.means.data.copy_(means)
+        self.means.data.copy_(hvd.broadcast(means, 0))
+
         self.initted = True
 
     @torch.no_grad()
