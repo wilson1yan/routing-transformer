@@ -189,7 +189,7 @@ class Kmeans(nn.Module):
         self.ema_decay = ema_decay
 
         self.register_buffer('means', torch.randn(num_heads, num_clusters, head_dim))
-        self.register_buffer('initted', torch.tensor(False))
+        self.initted = False
         self.num_new_means = 0
         self.new_means = None
 
@@ -216,7 +216,7 @@ class Kmeans(nn.Module):
 
         self.num_new_means = 0
         self.means.data.copy_(means)
-        self.initted.data.copy_(torch.tensor(True))
+        self.initted = True
 
     @torch.no_grad()
     def update(self, new_means = None):
@@ -278,7 +278,7 @@ class KmeansAttention(nn.Module):
         out = torch.zeros_like(q, dtype=dtype)
 
         update_kmeans = self.training and not is_reverse
-        
+
         key_mask = default(key_mask, query_mask) if not self.receives_context else key_mask
         kv_wsz = wsz if not self.receives_context else c_wsz
 
@@ -327,7 +327,7 @@ class KmeansAttention(nn.Module):
             mask = q_mask[:, :, :, :, None] >= kv_mask[:, :, :, None, :]
             mask = F.pad(mask, (self.num_mem_kv, 0), value=True)
             dots.masked_fill_(~mask, mask_value)
-            del mask            
+            del mask
 
         if self.shared_qk:
             q_mask, kv_mask = map(lambda t: t.reshape(b, h, nc, -1), (indices, kv_indices))
